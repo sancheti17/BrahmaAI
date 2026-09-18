@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather Post-Credit Video</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink:#17201d; --paper:#f3f0e7; --panel:#fffcf3;
+      --moss:#2e493e; --sun:#ffb000; --rain:#4a7396;
+      --line:rgba(23,32,29,.16); --muted:#68716d; --danger:#a63d32;
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0; min-height:100vh; color:var(--ink); background:var(--paper);
+      font-family:"DM Sans",sans-serif;
+      background-image:linear-gradient(rgba(46,73,62,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(46,73,62,.045) 1px,transparent 1px);
+      background-size:32px 32px;
+    }
+    button,input { font:inherit; }
+    button { cursor:pointer; }
+    .app { max-width:1400px; margin:auto; padding:24px; }
+    header { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:22px; }
+    h1,h2,h3 { font-family:"Space Grotesk",sans-serif; }
+    h1 { margin:0; font-size:24px; }
+    .subtitle,.date { color:var(--muted); font-size:13px; }
+    .layout { display:grid; grid-template-columns:minmax(0,1.65fr) minmax(310px,.75fr); gap:24px; align-items:start; }
+    .card { background:rgba(255,252,243,.94); border:1px solid var(--line); box-shadow:0 24px 70px rgba(27,42,36,.14); }
+    .player-card { padding:14px; border-radius:5px 26px 5px 5px; }
+    .controls { padding:22px; position:sticky; top:16px; }
+    .stage { position:relative; aspect-ratio:16/9; overflow:hidden; display:grid; place-items:center; background:#101815; border-radius:3px 17px 3px 3px; }
+    video { width:100%; height:100%; object-fit:contain; display:none; }
+    video.ready { display:block; }
+    .empty { max-width:560px; padding:32px; color:#dfe7e1; }
+    .empty small { color:#ffbd47; text-transform:uppercase; letter-spacing:.17em; }
+    .empty h2 { margin:13px 0 10px; font-size:clamp(34px,5vw,68px); line-height:.92; letter-spacing:-2px; }
+    .empty p { color:#aebbb5; line-height:1.55; }
+    .credit {
+      display:none; position:absolute; inset:0; padding:clamp(25px,5vw,64px);
+      align-items:flex-end; overflow:hidden; isolation:isolate; color:#fffdf6;
+    }
+    .credit.show { display:flex; animation:enter .6s ease-out; }
+    .credit::after { content:""; position:absolute; inset:0; z-index:-1; background:linear-gradient(180deg,transparent 20%,rgba(8,17,16,.75)); }
+    .credit.sunny { background:linear-gradient(135deg,#d96833,#f2a32f 50%,#f8d46d); }
+    .credit.rainy { background:linear-gradient(145deg,#172c3b,#31566c 56%,#53788b); }
+    .credit.winter { background:linear-gradient(145deg,#5f8792,#9dbdc1 52%,#d9e5df); }
+    .copy { position:relative; z-index:3; max-width:760px; }
+    .copy small { text-transform:uppercase; letter-spacing:.2em; opacity:.8; }
+    .copy h2 { margin:10px 0 8px; font-size:clamp(42px,7vw,92px); line-height:.88; letter-spacing:-3px; text-transform:uppercase; }
+    .copy p { margin:0; font-size:clamp(14px,2vw,20px); }
+    .icon { position:absolute; right:9%; top:13%; width:clamp(95px,15vw,210px); height:clamp(95px,15vw,210px); z-index:1; }
+    .sunny .icon { border-radius:50%; background:#fff1ad; box-shadow:0 0 0 22px rgba(255,241,173,.16),0 0 0 48px rgba(255,241,173,.08); animation:pulse 2.2s ease-in-out infinite; }
+    .rainy .icon { width:clamp(130px,19vw,255px); height:clamp(55px,8vw,105px); border-radius:80px; background:#d5e1e5; box-shadow:-55px 12px 0 -17px #c4d4da,55px 13px 0 -21px #e4ecef; }
+    .winter .icon { border-radius:50%; border:4px solid rgba(255,255,255,.88); }
+    .winter .icon::before,.winter .icon::after { content:""; position:absolute; left:49%; top:-14%; width:4px; height:128%; background:white; }
+    .winter .icon::before { transform:rotate(-60deg); }
+    .winter .icon::after { transform:rotate(60deg); }
+    .particle { position:absolute; top:-12%; }
+    .rainy .particle { width:2px; height:22%; background:rgba(205,233,246,.75); transform:rotate(12deg); animation:rain 1s linear infinite; }
+    .winter .particle { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.9); animation:snow 5s linear infinite; }
+    .sunny .particle { width:130%; height:2px; left:-15%!important; background:rgba(255,255,255,.18); transform:rotate(-12deg); animation:sunline 4s linear infinite; }
+    .below { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 3px 2px; font-size:13px; }
+    .link-button { border:0; background:transparent; color:var(--moss); padding:6px 0; border-bottom:1px solid var(--moss); font-weight:600; }
+    .controls h2 { margin:0; font-size:30px; }
+    .controls > p { color:var(--muted); line-height:1.5; font-size:14px; }
+    .step { border-top:1px solid var(--line); padding:17px 0; }
+    .step h3 { margin:0 0 11px; font-size:15px; }
+    .drop { display:block; border:1px dashed #809088; padding:15px; text-align:center; background:#f7f4eb; cursor:pointer; }
+    .drop:hover { background:#eef1e8; border-color:var(--moss); }
+    .drop strong,.drop small { display:block; }
+    .drop small,.name,.helper { color:var(--muted); font-size:11px; }
+    input[type=file] { position:absolute; width:1px; height:1px; opacity:0; }
+    .name { margin-top:7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .row { display:grid; grid-template-columns:1fr auto; gap:8px; }
+    input[type=text] { min-width:0; width:100%; border:1px solid var(--line); background:#faf8f0; padding:11px 12px; outline:none; }
+    input[type=text]:focus { border-color:var(--moss); box-shadow:0 0 0 3px rgba(46,73,62,.1); }
+    .primary,.secondary { border:0; min-height:42px; padding:10px 14px; font-weight:600; transition:.18s; }
+    .primary { background:var(--moss); color:#fff; }
+    .secondary { background:#e5e2d8; color:var(--ink); }
+    .primary:hover,.secondary:hover { transform:translateY(-1px); }
+    .primary:disabled { opacity:.45; cursor:not-allowed; transform:none; }
+    .full { width:100%; margin-top:8px; }
+    .status { margin-top:10px; min-height:42px; padding:10px 12px; background:#eeeae0; border-left:3px solid var(--muted); font-size:12px; line-height:1.45; }
+    .status.loading { border-color:var(--sun); }
+    .status.success { border-color:var(--moss); background:#e7eee8; }
+    .status.error { border-color:var(--danger); background:#f2e5e2; }
+    .styles { display:grid; grid-template-columns:repeat(3,1fr); border:1px solid var(--line); }
+    .styles label { padding:10px 4px; text-align:center; border-right:1px solid var(--line); cursor:pointer; font-size:12px; }
+    .styles label:last-child { border-right:0; }
+    .styles input { position:absolute; opacity:0; }
+    .styles label:has(input:checked) { color:white; background:var(--ink); }
+    .actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    @keyframes enter { from{opacity:0;transform:scale(1.025)} to{opacity:1;transform:scale(1)} }
+    @keyframes pulse { 50%{transform:scale(1.07)} }
+    @keyframes rain { to{transform:translate(55px,700px) rotate(12deg)} }
+    @keyframes snow { to{transform:translate(75px,700px) rotate(180deg)} }
+    @keyframes sunline { from{transform:translateY(-150px) rotate(-12deg)} to{transform:translateY(700px) rotate(-12deg)} }
+    @media(max-width:900px){ .layout{grid-template-columns:1fr}.controls{position:static} }
+    @media(max-width:540px){ .app{padding:12px}.stage{aspect-ratio:9/13}.actions{grid-template-columns:1fr}.date{display:none} }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div><h1>Weather Cut</h1><div class="subtitle">Local video + today's weather post-credit</div></div>
+      <div class="date" id="today">Today</div>
+    </header>
+
+    <div class="layout">
+      <section class="card player-card">
+        <div class="stage">
+          <div class="empty" id="empty">
+            <small>Local video preview</small>
+            <h2>Your ending,<br>with today's sky.</h2>
+            <p>Select a video. When playback ends, the app shows a short animated sunny, rainy, or winter post-credit scene.</p>
+          </div>
+          <video id="video" controls playsinline></video>
+          <div class="credit sunny" id="credit" aria-live="polite">
+            <div class="icon" aria-hidden="true"></div>
+            <div id="particles" aria-hidden="true"></div>
+            <div class="copy">
+              <small>A little scene after the scene</small>
+              <h2 id="creditTitle">Sunny today</h2>
+              <p id="creditText">The story ends. The weather continues.</p>
+            </div>
+          </div>
+        </div>
+        <div class="below">
+          <span>Video playback → weather post-credit</span>
+          <button class="link-button" id="returnButton" type="button">Return to video</button>
+        </div>
+      </section>
+
+      <aside class="card controls">
+        <h2>Build the ending</h2>
+        <p>The browser reads local video/audio files only after you select them. It cannot directly open a fixed folder such as <code>D:\Brahma_AI</code>.</p>
+
+        <section class="step">
+          <h3>1. Choose a video</h3>
+          <label class="drop">
+            <strong>Select MP4, WebM or MOV</strong>
+            <small>Choose from D:\Brahma_AI or another folder</small>
+            <input id="videoFile" type="file" accept="video/*">
+          </label>
+          <div class="name" id="videoName">No video selected</div>
+        </section>
+
+        <section class="step">
+          <h3>2. Optional post-credit song</h3>
+          <label class="drop">
+            <strong>Select MP3, WAV, M4A or OGG</strong>
+            <input id="audioFile" type="file" accept="audio/*">
+          </label>
+          <div class="name" id="audioName">No audio selected</div>
+          <audio id="creditAudio" preload="auto"></audio>
+        </section>
+
+        <section class="step">
+          <h3>3. Detect today's weather</h3>
+          <div class="row">
+            <input id="city" type="text" value="Bengaluru" placeholder="Enter city">
+            <button class="primary" id="detectButton" type="button">Detect</button>
+          </div>
+          <button class="secondary full" id="locationButton" type="button">Use my current location</button>
+          <div class="status" id="status">Ready. Live detection uses Open-Meteo; manual selection works without it.</div>
+        </section>
+
+        <section class="step">
+          <h3>4. Weather style</h3>
+          <div class="styles">
+            <label><input type="radio" name="weather" value="sunny" checked>☀ Sunny</label>
+            <label><input type="radio" name="weather" value="rainy">☂ Rainy</label>
+            <label><input type="radio" name="weather" value="winter">❄ Winter</label>
+          </div>
+          <p class="helper">Rain/precipitation → rainy; snow or temperature ≤ 12°C → winter; otherwise → sunny.</p>
+        </section>
+
+        <section class="step actions">
+          <button class="primary" id="previewButton" type="button">Preview post-credit</button>
+          <button class="secondary" id="playButton" type="button" disabled>Play video</button>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    const videoInput = document.getElementById('videoFile');
+    const audioInput = document.getElementById('audioFile');
+    const video = document.getElementById('video');
+    const audio = document.getElementById('creditAudio');
+    const empty = document.getElementById('empty');
+    const credit = document.getElementById('credit');
+    const particles = document.getElementById('particles');
+    const statusBox = document.getElementById('status');
+    const playButton = document.getElementById('playButton');
+    let videoUrl = null;
+    let audioUrl = null;
+    let weatherData = { place:'Your location', temperature:null };
+
+    document.getElementById('today').textContent = new Intl.DateTimeFormat(undefined, {
+      weekday:'long', day:'numeric', month:'long', year:'numeric'
+    }).format(new Date());
+
+    videoInput.addEventListener('change', () => {
+      const file = videoInput.files[0];
+      if (!file) return;
+      if (videoUrl) URL.revokeObjectURL(videoUrl);
+      videoUrl = URL.createObjectURL(file);
+      video.src = videoUrl;
+      video.classList.add('ready');
+      empty.style.display = 'none';
+      credit.classList.remove('show');
+      document.getElementById('videoName').textContent = file.name;
+      playButton.disabled = false;
+    });
+
+    audioInput.addEventListener('change', () => {
+      const file = audioInput.files[0];
+      if (!file) return;
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      audioUrl = URL.createObjectURL(file);
+      audio.src = audioUrl;
+      document.getElementById('audioName').textContent = file.name;
+    });
+
+    function selectedWeather() {
+      return document.querySelector('input[name="weather"]:checked').value;
+    }
+
+    function selectWeather(type) {
+      document.querySelector(`input[name="weather"][value="${type}"]`).checked = true;
+      updateCredit(type);
+    }
+
+    function buildParticles(type) {
+      particles.innerHTML = '';
+      const count = type === 'sunny' ? 8 : type === 'rainy' ? 34 : 30;
+      for (let i = 0; i < count; i++) {
+        const particle = document.createElement('i');
+        particle.className = 'particle';
+        particle.style.left = `${(i * 37 + 7) % 100}%`;
+        particle.style.animationDelay = `${-((i * .29) % 5)}s`;
+        if (type === 'sunny') particle.style.top = `${i * 12}%`;
+        if (type === 'rainy') particle.style.animationDuration = `${.72 + (i % 6) * .1}s`;
+        if (type === 'winter') {
+          const size = 4 + i % 7;
+          particle.style.width = `${size}px`;
+          particle.style.height = `${size}px`;
+          particle.style.animationDuration = `${3.4 + (i % 6) * .55}s`;
+        }
+        particles.appendChild(particle);
+      }
+    }
+
+    function updateCredit(type) {
+      credit.className = `credit ${type}`;
+      const titles = { sunny:'Sunny today', rainy:'Rainy today', winter:'Winter today' };
+      const lines = {
+        sunny:'A bright finish after the final frame.',
+        rainy:'Let the credits fall with the rain.',
+        winter:'A quiet cold ending after the story.'
+      };
+      document.getElementById('creditTitle').textContent = titles[type];
+      const details = [weatherData.place];
+      if (Number.isFinite(weatherData.temperature)) details.push(`${Math.round(weatherData.temperature)}°C`);
+      details.push(lines[type]);
+      document.getElementById('creditText').textContent = details.join(' · ');
+      buildParticles(type);
+    }
+
+    function showCredit() {
+      updateCredit(selectedWeather());
+      credit.classList.add('show');
+      if (audioUrl) {
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+      }
+    }
+
+    function hideCredit() {
+      credit.classList.remove('show');
+      audio.pause();
+      audio.currentTime = 0;
+    }
+
+    video.addEventListener('ended', showCredit);
+    video.addEventListener('play', hideCredit);
+    document.getElementById('previewButton').addEventListener('click', showCredit);
+    document.getElementById('returnButton').addEventListener('click', hideCredit);
+    playButton.addEventListener('click', () => {
+      hideCredit();
+      video.currentTime = 0;
+      video.play();
+    });
+    document.querySelectorAll('input[name="weather"]').forEach(radio => {
+      radio.addEventListener('change', () => updateCredit(radio.value));
+    });
+
+    function setStatus(message, state='') {
+      statusBox.className = `status ${state}`.trim();
+      statusBox.textContent = message;
+    }
+
+    function codeText(code) {
+      if (code === 0) return 'clear sky';
+      if ([1,2,3].includes(code)) return 'partly cloudy';
+      if ([45,48].includes(code)) return 'fog';
+      if ([51,53,55,56,57].includes(code)) return 'drizzle';
+      if ([61,63,65,66,67,80,81,82].includes(code)) return 'rain';
+      if ([71,73,75,77,85,86].includes(code)) return 'snow';
+      if ([95,96,99].includes(code)) return 'thunderstorm';
+      return 'current conditions';
+    }
+
+    function classify(current) {
+      const code = Number(current.weather_code);
+      const temperature = Number(current.temperature_2m);
+      const precipitation = Number(current.precipitation || 0);
+      const rainCodes = [51,53,55,56,57,61,63,65,66,67,80,81,82,95,96,99];
+      const snowCodes = [71,73,75,77,85,86];
+      if (snowCodes.includes(code) || temperature <= 12) return 'winter';
+      if (rainCodes.includes(code) || precipitation > 0) return 'rainy';
+      return 'sunny';
+    }
+
+    async function fetchWeather(latitude, longitude, place) {
+      setStatus('Checking today’s weather…', 'loading');
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}&current=temperature_2m,precipitation,weather_code&timezone=auto`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Weather service did not respond.');
+      const data = await response.json();
+      const current = data.current;
+      const type = classify(current);
+      weatherData = { place, temperature:Number(current.temperature_2m) };
+      selectWeather(type);
+      setStatus(`${place}: ${Math.round(current.temperature_2m)}°C, ${codeText(Number(current.weather_code))}. Post-credit: ${type}.`, 'success');
+    }
+
+    document.getElementById('detectButton').addEventListener('click', async () => {
+      const city = document.getElementById('city').value.trim();
+      if (!city) return setStatus('Enter a city first.', 'error');
+      try {
+        setStatus(`Finding ${city}…`, 'loading');
+        const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`);
+        if (!response.ok) throw new Error('Could not search for that city.');
+        const data = await response.json();
+        if (!data.results?.length) throw new Error('City not found.');
+        const result = data.results[0];
+        const place = [result.name,result.admin1,result.country].filter(Boolean).join(', ');
+        await fetchWeather(result.latitude,result.longitude,place);
+      } catch (error) {
+        setStatus(`${error.message} Choose the weather manually.`, 'error');
+      }
+    });
+
+    document.getElementById('locationButton').addEventListener('click', () => {
+      if (!navigator.geolocation) return setStatus('Geolocation is not supported. Use city search.', 'error');
+      setStatus('Waiting for location permission…', 'loading');
+      navigator.geolocation.getCurrentPosition(
+        position => fetchWeather(position.coords.latitude, position.coords.longitude, 'Current location')
+          .catch(error => setStatus(`${error.message} Choose manually.`, 'error')),
+        () => setStatus('Location permission was unavailable. Use city search.', 'error'),
+        { timeout:10000, maximumAge:300000 }
+      );
+    });
+
+    updateCredit('sunny');
+  </script>
+</body>
+</html>
